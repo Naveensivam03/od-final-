@@ -1877,7 +1877,7 @@ app.get('/api/admin/od-statistics', isAdmin, async (req, res) => {
                     {
                         $match: {
                             ...matchQuery,
-                            studentId: { $in: [...teacher.mentees, ...teacher.cls_students] }
+                            studentId: { $in: [...(teacher.mentees || []), ...(teacher.cls_students || [])] }
                         }
                     },
                     {
@@ -1912,7 +1912,7 @@ app.get('/api/admin/od-statistics', isAdmin, async (req, res) => {
                     {
                         $match: {
                             ...matchQuery,
-                            studentId: { $in: [...teacher.mentees, ...teacher.cls_students] }
+                            studentId: { $in: [...(teacher.mentees || []), ...(teacher.cls_students || [])] }
                         }
                     },
                     {
