@@ -105,108 +105,48 @@ const AdminDashboard = () => {
     const fetchStatistics = async () => {
         try {
             setError('');
+            console.log('Fetching statistics with params:', { timePeriod, selectedTeacher, selectedStudent });
             
-            // Use a try-catch block specifically for the API call
-            let response;
-            try {
-                response = await axios.get(
-                    `${API_ENDPOINTS.ADMIN_OD_STATISTICS}?timePeriod=${timePeriod}&teacherId=${selectedTeacher}&studentId=${selectedStudent}`,
-                    {
-                        headers: getAuthHeaders()
-                    }
-                );
-            } catch (apiError) {
-                console.error('API call error:', apiError);
-                throw new Error('Failed to fetch statistics from server');
-            }
-            
-            // Create a completely new statistics object with default values
-            const defaultStats = {
-                overall: { totalRequests: 0, approved: 0, rejected: 0, pending: 0 },
-                teacherStats: []
-            };
-            
-            // If no data or invalid data, use defaults
-            if (!response || !response.data) {
-                setStatistics(defaultStats);
-                return;
-            }
-            
-            // Safely extract overall statistics with defaults
-            const overall = {
-                totalRequests: 0,
-                approved: 0,
-                rejected: 0,
-                pending: 0
-            };
-            
-            // Try to get overall stats, but use defaults if any issues
-            try {
-                if (response.data.overall) {
-                    overall.totalRequests = parseInt(response.data.overall.totalRequests) || 0;
-                    overall.approved = parseInt(response.data.overall.approved) || 0;
-                    overall.rejected = parseInt(response.data.overall.rejected) || 0;
-                    overall.pending = parseInt(response.data.overall.pending) || 0;
+            const response = await axios.get(
+                `${API_ENDPOINTS.ADMIN_OD_STATISTICS}?timePeriod=${timePeriod}&teacherId=${selectedTeacher}&studentId=${selectedStudent}`,
+                {
+                    headers: getAuthHeaders()
                 }
-            } catch (e) {
-                console.error('Error processing overall stats:', e);
-                // Keep default values
+            );
+            
+            console.log('Statistics response:', response.data);
+            
+            if (!response.data) {
+                throw new Error('No data received from server');
             }
             
-            // Safely process teacher stats
-            let teacherStats = [];
-            try {
-                if (Array.isArray(response.data.teacherStats)) {
-                    teacherStats = response.data.teacherStats.map(teacher => {
-                        // Create a safe teacher object with defaults
-                        const safeTeacher = {
-                            teacherId: '',
-                            teacherName: '',
-                            teacherEmail: '',
-                            stats: {
-                                totalHandled: 0,
-                                approved: 0,
-                                rejected: 0,
-                                pending: 0
-                            }
-                        };
-                        
-                        // Try to safely extract values
-                        if (teacher) {
-                            // Convert ObjectId to string if it's an object
-                            safeTeacher.teacherId = teacher.teacherId ? 
-                                (typeof teacher.teacherId === 'object' ? 
-                                    teacher.teacherId.toString() : 
-                                    String(teacher.teacherId)) : '';
-                            
-                            safeTeacher.teacherName = teacher.teacherName || '';
-                            safeTeacher.teacherEmail = teacher.teacherEmail || '';
-                            
-                            if (teacher.stats) {
-                                safeTeacher.stats.totalHandled = parseInt(teacher.stats.totalHandled) || 0;
-                                safeTeacher.stats.approved = parseInt(teacher.stats.approved) || 0;
-                                safeTeacher.stats.rejected = parseInt(teacher.stats.rejected) || 0;
-                                safeTeacher.stats.pending = parseInt(teacher.stats.pending) || 0;
-                            }
-                        }
-                        
-                        return safeTeacher;
-                    });
-                }
-            } catch (e) {
-                console.error('Error processing teacher stats:', e);
-                // Keep empty array
-            }
+            const { overall, teacherStats } = response.data;
             
-            // Set the safely processed statistics
+            // Set the statistics with the received data
             setStatistics({
-                overall,
-                teacherStats
+                overall: {
+                    totalRequests: overall?.totalRequests || 0,
+                    approved: overall?.approved || 0,
+                    rejected: overall?.rejected || 0,
+                    pending: overall?.pending || 0
+                },
+                teacherStats: Array.isArray(teacherStats) ? teacherStats.map(teacher => ({
+                    teacherId: teacher.teacherId,
+                    teacherName: teacher.teacherName || 'Unknown',
+                    teacherEmail: teacher.teacherEmail || '',
+                    stats: {
+                        totalHandled: teacher.stats?.totalHandled || 0,
+                        approved: teacher.stats?.approved || 0,
+                        rejected: teacher.stats?.rejected || 0,
+                        pending: teacher.stats?.pending || 0
+                    }
+                })) : []
             });
             
         } catch (error) {
             console.error('Error fetching statistics:', error);
-            setError(error.message || 'Failed to fetch statistics');
+            console.error('Error details:', error.response?.data);
+            setError(error.response?.data?.message || 'Failed to fetch statistics');
             
             // Set default values when there's an error
             setStatistics({
@@ -498,55 +438,61 @@ const AdminDashboard = () => {
                         </Grid>
                     </Grid>
 
-                    {selectedTeacher === 'all' && (
-                        <>
-                            <Typography variant="h5" sx={{ mb: 3 }}>Teacher Statistics</Typography>
-                            <TableContainer component={Paper} sx={{ mb: 4 }}>
-                                <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>Teacher Name</TableCell>
-                                            <TableCell>Email</TableCell>
-                                            <TableCell>Total Handled</TableCell>
-                                            <TableCell>Approved</TableCell>
-                                            <TableCell>Rejected</TableCell>
-                                            <TableCell>Pending</TableCell>
+                    <Typography variant="h5" sx={{ mb: 3 }}>Teacher Statistics</Typography>
+                    <TableContainer component={Paper} sx={{ mb: 4 }}>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Teacher Name</TableCell>
+                                    <TableCell>Email</TableCell>
+                                    <TableCell>Total Handled</TableCell>
+                                    <TableCell>Approved</TableCell>
+                                    <TableCell>Rejected</TableCell>
+                                    <TableCell>Pending</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {statistics.teacherStats && statistics.teacherStats.length > 0 ? (
+                                    statistics.teacherStats.map((teacher) => (
+                                        <TableRow key={teacher.teacherId}>
+                                            <TableCell>{teacher.teacherName}</TableCell>
+                                            <TableCell>{teacher.teacherEmail}</TableCell>
+                                            <TableCell>{teacher.stats?.totalHandled || 0}</TableCell>
+                                            <TableCell>
+                                                <Chip 
+                                                    label={teacher.stats?.approved || 0}
+                                                    color="success"
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Chip 
+                                                    label={teacher.stats?.rejected || 0}
+                                                    color="error"
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Chip 
+                                                    label={teacher.stats?.pending || 0}
+                                                    color="warning"
+                                                    size="small"
+                                                />
+                                            </TableCell>
                                         </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {statistics.teacherStats.map((teacher) => (
-                                            <TableRow key={teacher.teacherId}>
-                                                <TableCell>{teacher.teacherName}</TableCell>
-                                                <TableCell>{teacher.teacherEmail}</TableCell>
-                                                <TableCell>{teacher.stats.totalHandled}</TableCell>
-                                                <TableCell>
-                                                    <Chip 
-                                                        label={teacher.stats.approved}
-                                                        color="success"
-                                                        size="small"
-                                                    />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Chip 
-                                                        label={teacher.stats.rejected}
-                                                        color="error"
-                                                        size="small"
-                                                    />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Chip 
-                                                        label={teacher.stats.pending}
-                                                        color="warning"
-                                                        size="small"
-                                                    />
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        </>
-                    )}
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="center">
+                                            <Typography variant="body1" color="textSecondary">
+                                                No teacher statistics available for the selected filters
+                                            </Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
                 </>
             ) : (
                 <>
