@@ -20,6 +20,7 @@ import axios from 'axios';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
+import { API_BASE_URL, API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 const StyledForm = styled('form')({
   width: '100%',
@@ -108,13 +109,8 @@ export default function Form() {
         // Fetch user's OD applications from the backend
         const fetchSubmissions = async () => {
             try {
-                const token = localStorage.getItem('token');
-                if (!token) return;
-
-                const response = await axios.get('http://localhost:5000/api/od-applications', {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
+                const response = await axios.get(API_ENDPOINTS.OD_APPLICATIONS, {
+                    headers: getAuthHeaders()
                 });
 
                 if (response.data.applications) {
@@ -175,52 +171,12 @@ export default function Form() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        // Validate form data
-        if (!formData.startDateTime || !formData.endDateTime) {
-            setSnackbar({
-                open: true,
-                message: 'Please select start and end date/time',
-                severity: 'error'
-            });
-            return;
-        }
-        
-        if (!formData.description.trim()) {
-            setSnackbar({
-                open: true,
-                message: 'Please provide a reason for your OD request',
-                severity: 'error'
-            });
-            return;
-        }
-        
-        if (formData.fileUrls.length === 0) {
-            setSnackbar({
-                open: true,
-                message: 'Please upload supporting documents',
-                severity: 'error'
-            });
-            return;
-        }
-        
         setIsLoading(true);
         
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                setSnackbar({
-                    open: true,
-                    message: 'You must be logged in to submit an application',
-                    severity: 'error'
-                });
-                setIsLoading(false);
-                return;
-            }
-            
             // Submit the OD application with file URLs
             const response = await axios.post(
-                'http://localhost:5000/api/od-applications', 
+                API_ENDPOINTS.OD_APPLICATIONS, 
                 {
                     startDateTime: formData.startDateTime,
                     endDateTime: formData.endDateTime,
@@ -228,9 +184,7 @@ export default function Form() {
                     fileUrls: formData.fileUrls
                 },
                 {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
+                    headers: getAuthHeaders()
                 }
             );
             
@@ -266,13 +220,8 @@ export default function Form() {
 
     const fetchSubmissions = async () => {
         try {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-
-            const response = await axios.get('http://localhost:5000/api/od-applications', {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+            const response = await axios.get(API_ENDPOINTS.OD_APPLICATIONS, {
+                headers: getAuthHeaders()
             });
 
             if (response.data.applications) {

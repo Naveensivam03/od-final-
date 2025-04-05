@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_ENDPOINTS } from '../config';
 import '../styles/ForgotPassword.css';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import LockIcon from '@mui/icons-material/Lock';
@@ -9,22 +10,26 @@ const ForgotPassword = () => {
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
-    const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
+    const [step, setStep] = useState('forgot'); // 'forgot', 'verify', 'reset'
     const [isLoading, setIsLoading] = useState(false);
     const [resetToken, setResetToken] = useState('');
+    const navigate = useNavigate();
 
-    const handleSendOTP = async (e) => {
+    const handleForgotPassword = async (e) => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
-        setMessage('');
-
+        
         try {
-            const response = await axios.post('http://localhost:5000/api/forgot-password', { email });
-            setMessage('OTP has been sent to your email');
-            setStep(2);
+            const response = await axios.post(API_ENDPOINTS.SEND_OTP, { email });
+            
+            if (response.data.message === 'OTP sent successfully') {
+                setStep('verify');
+                setMessage('OTP has been sent to your email');
+            }
         } catch (error) {
             setError(error.response?.data?.message || 'Failed to send OTP');
         } finally {
@@ -36,15 +41,16 @@ const ForgotPassword = () => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
-        setMessage('');
-
+        
         try {
-            const response = await axios.post('http://localhost:5000/api/verify-otp', { email, otp });
-            setResetToken(response.data.resetToken);
-            setMessage('OTP verified successfully');
-            setStep(3);
+            const response = await axios.post(API_ENDPOINTS.VERIFY_OTP, { email, otp });
+            
+            if (response.data.success) {
+                setStep('reset');
+                setMessage('OTP verified successfully');
+            }
         } catch (error) {
-            setError(error.response?.data?.message || 'Invalid OTP');
+            setError(error.response?.data?.message || 'Failed to verify OTP');
         } finally {
             setIsLoading(false);
         }
@@ -54,17 +60,26 @@ const ForgotPassword = () => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
-        setMessage('');
-
+        
+        if (newPassword !== confirmPassword) {
+            setError('Passwords do not match');
+            setIsLoading(false);
+            return;
+        }
+        
         try {
-            const response = await axios.post('http://localhost:5000/api/reset-password', {
-                resetToken,
+            const response = await axios.post(API_ENDPOINTS.RESET_PASSWORD, {
+                email,
+                otp,
                 newPassword
             });
-            setMessage('Password reset successful');
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 2000);
+            
+            if (response.data.success) {
+                setMessage('Password reset successfully');
+                setTimeout(() => {
+                    navigate('/login');
+                }, 2000);
+            }
         } catch (error) {
             setError(error.response?.data?.message || 'Failed to reset password');
         } finally {
@@ -82,8 +97,8 @@ const ForgotPassword = () => {
                 {error && <div className="error-message">{error}</div>}
                 {message && <div className="success-message">{message}</div>}
 
-                {step === 1 && (
-                    <form onSubmit={handleSendOTP}>
+                {step === 'forgot' && (
+                    <form onSubmit={handleForgotPassword}>
                         <div className="form-group">
                             <div className="input-group">
                                 <PersonOutlineIcon className="input-icon" />
@@ -102,7 +117,7 @@ const ForgotPassword = () => {
                     </form>
                 )}
 
-                {step === 2 && (
+                {step === 'verify' && (
                     <form onSubmit={handleVerifyOTP}>
                         <div className="form-group">
                             <div className="input-group">
@@ -123,7 +138,7 @@ const ForgotPassword = () => {
                     </form>
                 )}
 
-                {step === 3 && (
+                {step === 'reset' && (
                     <form onSubmit={handleResetPassword}>
                         <div className="form-group">
                             <div className="input-group">
@@ -133,6 +148,19 @@ const ForgotPassword = () => {
                                     placeholder="Enter new password"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
+                                    required
+                                    minLength="6"
+                                />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <div className="input-group">
+                                <LockIcon className="input-icon" />
+                                <input
+                                    type="password"
+                                    placeholder="Confirm new password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
                                     required
                                     minLength="6"
                                 />

@@ -4,6 +4,7 @@ import axios from 'axios';
 import '../styles/Login.css';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import { API_ENDPOINTS } from '../config';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -27,7 +28,7 @@ const Login = () => {
         setError('');
         
         try {
-            const response = await axios.post('http://localhost:5000/api/login', formData);
+            const response = await axios.post(API_ENDPOINTS.LOGIN, formData);
             
             if (response.data.token) {
                 localStorage.setItem('token', response.data.token);

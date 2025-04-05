@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import axios from 'axios';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 const StyledCard = styled(Card)(({ theme }) => ({
     background: 'linear-gradient(135deg, rgba(26, 35, 126, 0.05) 0%, rgba(26, 35, 126, 0.1) 100%)',
@@ -54,9 +55,8 @@ const ODStatistics = () => {
 
     const fetchStatistics = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:5000/api/teacher/od-statistics', {
-                headers: { Authorization: `Bearer ${token}` },
+            const response = await axios.get(API_ENDPOINTS.TEACHER_OD_STATISTICS, {
+                headers: getAuthHeaders(),
                 params: {
                     timePeriod,
                     status: status || undefined,

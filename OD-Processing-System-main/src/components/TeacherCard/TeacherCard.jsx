@@ -15,6 +15,7 @@ import {
 import { styled } from '@mui/material/styles';
 import axios from 'axios';
 import RejectPopUp from './RejectPopUp';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 const StyledCard = styled(Card)(({ theme }) => ({
     background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.95) 100%)',
@@ -55,9 +56,8 @@ const TeacherCard = ({ request, onApprove, onReject }) => {
     useEffect(() => {
         const fetchStatistics = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const response = await axios.get('http://localhost:5000/api/teacher/od-statistics', {
-                    headers: { Authorization: `Bearer ${token}` }
+                const response = await axios.get(API_ENDPOINTS.TEACHER_OD_STATISTICS, {
+                    headers: getAuthHeaders()
                 });
                 setStatistics(response.data);
             } catch (error) {
@@ -227,7 +227,7 @@ const TeacherCard = ({ request, onApprove, onReject }) => {
             <RejectPopUp 
                 open={openRejectDialog} 
                 onClose={handleCloseRejectDialog}
-                onReject={onReject}
+                onReject={(reason) => onReject(request._id, reason)}
             />
 
             <Dialog 

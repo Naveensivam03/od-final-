@@ -19,6 +19,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import BadgeIcon from '@mui/icons-material/Badge';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import PersonIcon from '@mui/icons-material/Person';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 // Styled components for profile section
 const ProfileCard = styled(Card)(({ theme }) => ({
@@ -88,11 +89,8 @@ export default function StudentHome() {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:5000/api/student/profile', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                const response = await fetch(API_ENDPOINTS.STUDENT_PROFILE, {
+                    headers: getAuthHeaders()
                 });
                 const data = await response.json();
                 if (data.success) {

@@ -20,6 +20,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { ListItemSecondaryAction } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -104,6 +105,7 @@ const StyledDialogTitle = styled(DialogTitle)({
 
 export default function InputFileUpload({ onFilesSelected, onUploadError }) {
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadedFileUrls, setUploadedFileUrls] = useState([]);
   const [previewFile, setPreviewFile] = useState(null);
   const [openPreview, setOpenPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -129,34 +131,35 @@ export default function InputFileUpload({ onFilesSelected, onUploadError }) {
     });
     
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication required');
-      }
-      
       const response = await axios.post(
-        'http://localhost:5000/api/upload-od-files', 
+        API_ENDPOINTS.UPLOAD_OD_FILES, 
         formData, 
         {
           headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`
+            ...getAuthHeaders(),
+            'Content-Type': 'multipart/form-data'
           }
         }
       );
       
       if (response.data.success && response.data.files) {
+        // Store the uploaded file URLs
+        setUploadedFileUrls(response.data.files);
         // Pass the file URLs to the parent component
         if (onFilesSelected) {
           onFilesSelected(response.data.files);
         }
+      } else {
+        throw new Error('Upload failed: No files returned from server');
       }
     } catch (error) {
       console.error('File upload error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to upload files';
       if (onUploadError) {
-        onUploadError(error.response?.data?.message || 'Failed to upload files');
+        onUploadError(errorMessage);
       }
-      // Keep the files in the UI even if upload failed
+      // Clear the selected files on error
+      setSelectedFiles([]);
     } finally {
       setUploading(false);
     }
@@ -174,10 +177,11 @@ export default function InputFileUpload({ onFilesSelected, onUploadError }) {
 
   const handleRemove = (index) => {
     const newFiles = selectedFiles.filter((_, i) => i !== index);
+    const newUrls = uploadedFileUrls.filter((_, i) => i !== index);
     setSelectedFiles(newFiles);
+    setUploadedFileUrls(newUrls);
     if (onFilesSelected) {
-      // If we're removing all files, pass empty array
-      onFilesSelected(newFiles.length === 0 ? [] : newFiles);
+      onFilesSelected(newUrls);
     }
   };
 

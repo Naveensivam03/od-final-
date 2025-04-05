@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import PopupReject from '../../components/TeacherCard/RejectPopUp';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 // Styled components for better organization
 const InfoLabel = styled(Typography)({
@@ -77,16 +78,8 @@ export default function Mentees() {
     const fetchMenteeRequests = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('token');
-            
-            if (!token) {
-                throw new Error('Authentication required');
-            }
-            
-            const response = await axios.get('http://localhost:5000/api/teacher/mentee-requests', {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+            const response = await axios.get(API_ENDPOINTS.TEACHER_MENTEE_REQUESTS, {
+                headers: getAuthHeaders()
             });
             
             console.log('Mentee requests:', response.data.requests);
@@ -116,31 +109,16 @@ export default function Mentees() {
     // Function to approve a request
     const handleApprove = async (id) => {
         try {
-            const token = localStorage.getItem('token');
-            
-            if (!token) {
-                throw new Error('Authentication required');
-            }
-            
-            const response = await axios.post(`http://localhost:5000/api/teacher/approve-request/${id}`, {}, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+            const response = await axios.post(`${API_ENDPOINTS.TEACHER_APPROVE_REQUEST}/${id}`, {}, {
+                headers: getAuthHeaders()
             });
             
-            // Update the local state to reflect the approval
-            setRequests(requests.map(request => 
-                request._id === id 
-                    ? { ...request, mentorApproval: { status: 'Approved' } } 
-                    : request
-            ));
-            
-            setSnackbarMessage('Request approved successfully');
-            setSnackbarSeverity('success');
-            setSnackbarOpen(true);
-            
-            // Refresh the requests list
-            fetchMenteeRequests();
+            if (response.data.success) {
+                setSnackbarMessage('Request approved successfully');
+                setSnackbarSeverity('success');
+                setSnackbarOpen(true);
+                fetchMenteeRequests();
+            }
         } catch (error) {
             console.error('Error approving request:', error);
             setSnackbarMessage(error.response?.data?.message || 'Failed to approve request');
@@ -164,38 +142,16 @@ export default function Mentees() {
     // Function to reject a request
     const handleReject = async (id, reason) => {
         try {
-            const token = localStorage.getItem('token');
+            const response = await axios.post(`${API_ENDPOINTS.TEACHER_REJECT_REQUEST}/${id}`, { reason }, {
+                headers: getAuthHeaders()
+            });
             
-            if (!token) {
-                throw new Error('Authentication required');
+            if (response.data.success) {
+                setSnackbarMessage('Request rejected successfully');
+                setSnackbarSeverity('success');
+                setSnackbarOpen(true);
+                fetchMenteeRequests();
             }
-            
-            const response = await axios.post(`http://localhost:5000/api/teacher/reject-request/${id}`, 
-                { reason: "Request rejected" }, // Use a default reason
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
-            
-            // Update the local state to reflect the rejection
-            setRequests(requests.map(request => 
-                request._id === id 
-                    ? { ...request, mentorApproval: { status: 'Rejected', remarks: "Request rejected" } } 
-                    : request
-            ));
-            
-            setSnackbarMessage('Request rejected successfully');
-            setSnackbarSeverity('success');
-            setSnackbarOpen(true);
-            
-            // Close the reject popup
-            setRejectPopupOpen(false);
-            setSelectedRequest(null);
-            
-            // Refresh the requests list
-            fetchMenteeRequests();
         } catch (error) {
             console.error('Error rejecting request:', error);
             setSnackbarMessage(error.response?.data?.message || 'Failed to reject request');

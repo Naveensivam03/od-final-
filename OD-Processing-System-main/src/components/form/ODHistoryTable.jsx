@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import axios from 'axios';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
     fontWeight: 600,
@@ -149,9 +150,8 @@ const ODHistoryTable = ({ submissions = [] }) => {
 
     const fetchSubmissions = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(`http://localhost:5000/api/od-applications?timePeriod=${timePeriod}&status=${status}`, {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await axios.get(`${API_ENDPOINTS.OD_APPLICATIONS}?timePeriod=${timePeriod}&status=${status}`, {
+                headers: getAuthHeaders()
             });
             setFilteredSubmissions(response.data.applications || []);
         } catch (error) {

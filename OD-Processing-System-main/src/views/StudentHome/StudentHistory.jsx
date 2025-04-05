@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Typography, Box } from '@mui/material';
 import ODHistoryTable from '../../components/form/ODHistoryTable';
 import axios from 'axios';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 export default function StudentHistory() {
   const [applications, setApplications] = useState([]);
@@ -11,15 +12,8 @@ export default function StudentHistory() {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          throw new Error('Authentication required');
-        }
-
-        const response = await axios.get('http://localhost:5000/api/od-applications', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+        const response = await axios.get(API_ENDPOINTS.OD_APPLICATIONS, {
+          headers: getAuthHeaders()
         });
 
         setApplications(response.data.applications || []);

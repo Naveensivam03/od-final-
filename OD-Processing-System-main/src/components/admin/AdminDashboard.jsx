@@ -31,6 +31,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import axios from 'axios';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 const StatsCard = ({ title, value, color = 'primary' }) => (
     <Card sx={{ 
@@ -90,9 +91,8 @@ const AdminDashboard = () => {
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:5000/api/users', {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await axios.get(API_ENDPOINTS.USERS, {
+                headers: getAuthHeaders()
             });
             setUsers(response.data.users);
             setTeachers(response.data.users.filter(user => user.role === 'teacher'));
@@ -104,11 +104,10 @@ const AdminDashboard = () => {
 
     const fetchStatistics = async () => {
         try {
-            const token = localStorage.getItem('token');
             const response = await axios.get(
-                `http://localhost:5000/api/admin/od-statistics?timePeriod=${timePeriod}&teacherId=${selectedTeacher}&studentId=${selectedStudent}`,
+                `${API_ENDPOINTS.ADMIN_OD_STATISTICS}?timePeriod=${timePeriod}&teacherId=${selectedTeacher}&studentId=${selectedStudent}`,
                 {
-                    headers: { Authorization: `Bearer ${token}` }
+                    headers: getAuthHeaders()
                 }
             );
             setStatistics(response.data);
@@ -136,13 +135,17 @@ const AdminDashboard = () => {
         });
     };
 
+    const convertArrayToString = (arr) => {
+        return Array.isArray(arr) ? arr.join(', ') : '';
+    };
+
     const handleEditOpen = (user) => {
-        // Convert arrays of IDs to arrays of roll numbers when opening edit dialog
+        // Convert arrays to comma-separated strings for editing
         const editUser = {
             ...user,
-            mentees: user.menteeRollNumbers || [],
-            cls_students: user.classStudentRollNumbers || [],
-            handling_students: user.handlingStudentRollNumbers || []
+            mentees: convertArrayToString(user.menteeRollNumbers || user.mentees || []),
+            cls_students: convertArrayToString(user.classStudentRollNumbers || user.cls_students || []),
+            handling_students: convertArrayToString(user.handlingStudentRollNumbers || user.handling_students || [])
         };
         setEditingUser(editUser);
         setEditOpen(true);
@@ -198,64 +201,83 @@ const AdminDashboard = () => {
             .filter(item => item !== '');
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleCreateUser = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const processedUser = { ...newUser };
+            setError('');
+            setSuccess('');
             
-            // Process arrays before submission
-            if (processedUser.role === 'teacher') {
-                // Convert empty strings to empty arrays
-                processedUser.mentees = processedUser.mentees ? processArrayBeforeSubmit(processedUser.mentees) : [];
-                processedUser.cls_students = processedUser.cls_students ? processArrayBeforeSubmit(processedUser.cls_students) : [];
-                processedUser.handling_students = processedUser.handling_students ? processArrayBeforeSubmit(processedUser.handling_students) : [];
-            }
-
-            // Remove empty fields for student role
-            if (processedUser.role === 'student') {
-                delete processedUser.mentees;
-                delete processedUser.cls_students;
-                delete processedUser.handling_students;
-            }
-
-            const response = await axios.post('http://localhost:5000/api/users', processedUser, {
-                headers: { Authorization: `Bearer ${token}` }
+            // Process the user data
+            const processedUser = {
+                ...newUser,
+                mentees: newUser.mentees ? newUser.mentees.split(',').map(id => id.trim()) : [],
+                cls_students: newUser.cls_students ? newUser.cls_students.split(',').map(id => id.trim()) : [],
+                handling_students: newUser.handling_students ? newUser.handling_students.split(',').map(id => id.trim()) : []
+            };
+            
+            const response = await axios.post(API_ENDPOINTS.USERS, processedUser, {
+                headers: getAuthHeaders()
             });
             
             if (response.data.success) {
                 setSuccess('User created successfully');
                 handleClose();
                 fetchUsers();
-            } else {
-                setError(response.data.message || 'Failed to create user');
             }
         } catch (error) {
-            console.error('Error creating user:', error);
-            setError(error.response?.data?.message || 'Failed to create user. Please check the input values.');
+            setError(error.response?.data?.message || 'Failed to create user');
         }
     };
 
-    const handleEditSubmit = async (e) => {
-        e.preventDefault();
+    const handleUpdateUser = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const processedUser = { ...editingUser };
+            setError('');
+            setSuccess('');
             
-            // Process arrays before submission
-            if (processedUser.role === 'teacher') {
-                processedUser.mentees = processArrayBeforeSubmit(processedUser.mentees);
-                processedUser.cls_students = processArrayBeforeSubmit(processedUser.cls_students);
-                processedUser.handling_students = processArrayBeforeSubmit(processedUser.handling_students);
+            // Validate required fields for students
+            if (editingUser.role === 'student') {
+                if (!editingUser.mentor || !editingUser.cls_advisor) {
+                    setError('Both mentor and class advisor are required for students');
+                    return;
+                }
+                if (!editingUser.roll_no) {
+                    setError('Roll number is required for students');
+                    return;
+                }
             }
-
-            await axios.put(`http://localhost:5000/api/users/${editingUser._id}`, processedUser, {
-                headers: { Authorization: `Bearer ${token}` }
+            
+            // Process the user data
+            const processedUser = {
+                ...editingUser,
+                mentees: typeof editingUser.mentees === 'string' ? processArrayBeforeSubmit(editingUser.mentees) : (editingUser.mentees || []),
+                cls_students: typeof editingUser.cls_students === 'string' ? processArrayBeforeSubmit(editingUser.cls_students) : (editingUser.cls_students || []),
+                handling_students: typeof editingUser.handling_students === 'string' ? processArrayBeforeSubmit(editingUser.handling_students) : (editingUser.handling_students || [])
+            };
+            
+            // Remove any undefined or null values
+            Object.keys(processedUser).forEach(key => {
+                if (processedUser[key] === undefined || processedUser[key] === null) {
+                    delete processedUser[key];
+                }
             });
-            setSuccess('User updated successfully');
-            handleEditClose();
-            fetchUsers();
+            
+            console.log('Sending update request with data:', processedUser);
+            
+            const response = await axios.put(API_ENDPOINTS.USER_BY_ID(editingUser._id), processedUser, {
+                headers: getAuthHeaders()
+            });
+            
+            console.log('Update response:', response.data);
+            
+            if (response.data.message === 'User updated successfully') {
+                setSuccess('User updated successfully');
+                handleEditClose();
+                fetchUsers();
+            } else {
+                setError('Unexpected response format');
+            }
         } catch (error) {
+            console.error('Error updating user:', error);
+            console.error('Error details:', error.response?.data);
             setError(error.response?.data?.message || 'Failed to update user');
         }
     };
@@ -263,18 +285,14 @@ const AdminDashboard = () => {
     const handleDeleteUser = async (userId) => {
         if (window.confirm('Are you sure you want to delete this user?')) {
             try {
-                const token = localStorage.getItem('token');
-                await axios.delete(`http://localhost:5000/api/users/${userId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                await axios.delete(API_ENDPOINTS.USER_BY_ID(userId), {
+                    headers: getAuthHeaders()
                 });
                 setSuccess('User deleted successfully');
                 fetchUsers();
             } catch (error) {
-                if (error.response?.status === 403) {
-                    setError('You cannot delete your own admin account');
-                } else {
-                    setError(error.response?.data?.message || 'Failed to delete user');
-                }
+                console.error('Error deleting user:', error);
+                setError(error.response?.data?.message || 'Failed to delete user');
             }
         }
     };
@@ -499,7 +517,7 @@ const AdminDashboard = () => {
             <Dialog open={open} onClose={handleClose}>
                 <DialogTitle>Add New User</DialogTitle>
                 <DialogContent>
-                    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+                    <Box component="form" onSubmit={handleCreateUser} sx={{ mt: 2 }}>
                         <TextField
                             fullWidth
                             label="Name"
@@ -634,7 +652,7 @@ const AdminDashboard = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleClose}>Cancel</Button>
-                    <Button onClick={handleSubmit} variant="contained" color="primary">
+                    <Button onClick={handleCreateUser} variant="contained" color="primary">
                         Create User
                     </Button>
                 </DialogActions>
@@ -643,7 +661,7 @@ const AdminDashboard = () => {
             <Dialog open={editOpen} onClose={handleEditClose}>
                 <DialogTitle>Edit User</DialogTitle>
                 <DialogContent>
-                    <Box component="form" onSubmit={handleEditSubmit} sx={{ mt: 2 }}>
+                    <Box component="form" onSubmit={handleUpdateUser} sx={{ mt: 2 }}>
                         <TextField
                             fullWidth
                             label="Name"
@@ -768,7 +786,7 @@ const AdminDashboard = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleEditClose}>Cancel</Button>
-                    <Button onClick={handleEditSubmit} variant="contained" color="primary">
+                    <Button onClick={handleUpdateUser} variant="contained" color="primary">
                         Update User
                     </Button>
                 </DialogActions>

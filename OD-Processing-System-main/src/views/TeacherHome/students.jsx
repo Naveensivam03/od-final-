@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 import { 
     Box, 
@@ -77,16 +78,8 @@ export default function Students() {
     const fetchClassAdvisorRequests = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('token');
-            
-            if (!token) {
-                throw new Error('Authentication required');
-            }
-            
-            const response = await axios.get('http://localhost:5000/api/teacher/class-advisor-requests', {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+            const response = await axios.get(API_ENDPOINTS.TEACHER_CLASS_ADVISOR_REQUESTS, {
+                headers: getAuthHeaders()
             });
             
             console.log('Class advisor requests:', response.data.requests);
@@ -116,16 +109,8 @@ export default function Students() {
     // Function to approve a request
     const handleApprove = async (id) => {
         try {
-            const token = localStorage.getItem('token');
-            
-            if (!token) {
-                throw new Error('Authentication required');
-            }
-            
-            const response = await axios.post(`http://localhost:5000/api/teacher/class-advisor-approve/${id}`, {}, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+            const response = await axios.post(`${API_ENDPOINTS.CLASS_ADVISOR_APPROVE}/${id}`, {}, {
+                headers: getAuthHeaders()
             });
             
             // Update the local state to reflect the approval
@@ -164,18 +149,10 @@ export default function Students() {
     // Function to reject a request
     const handleReject = async (id, reason) => {
         try {
-            const token = localStorage.getItem('token');
-            
-            if (!token) {
-                throw new Error('Authentication required');
-            }
-            
-            const response = await axios.post(`http://localhost:5000/api/teacher/class-advisor-reject/${id}`, 
+            const response = await axios.post(`${API_ENDPOINTS.CLASS_ADVISOR_REJECT}/${id}`, 
                 { reason }, 
                 {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
+                    headers: getAuthHeaders()
                 }
             );
             

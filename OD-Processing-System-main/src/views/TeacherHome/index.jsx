@@ -18,6 +18,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import axios from 'axios';
 import TeacherCard from '../../components/TeacherCard/TeacherCard';
 import ODStatistics from '../../components/TeacherCard/ODStatistics';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
 const StyledContainer = styled(Container)(({ theme }) => ({
     minHeight: '100vh',
@@ -141,9 +142,8 @@ export default function TeacherHome() {
 
     const fetchODRequests = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:5000/api/teacher/mentee-requests', {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await axios.get(API_ENDPOINTS.TEACHER_MENTEE_REQUESTS, {
+                headers: getAuthHeaders()
             });
             setOdRequests(response.data.requests || []);
             setLoading(false);
@@ -156,9 +156,8 @@ export default function TeacherHome() {
 
     const handleApprove = async (requestId) => {
         try {
-            const token = localStorage.getItem('token');
-            await axios.post(`http://localhost:5000/api/teacher/approve-request/${requestId}`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
+            await axios.post(`${API_ENDPOINTS.TEACHER_APPROVE_REQUEST}/${requestId}`, {}, {
+                headers: getAuthHeaders()
             });
             fetchODRequests();
         } catch (error) {
@@ -168,9 +167,8 @@ export default function TeacherHome() {
 
     const handleReject = async (requestId, reason) => {
         try {
-            const token = localStorage.getItem('token');
-            await axios.post(`http://localhost:5000/api/teacher/reject-request/${requestId}`, { reason }, {
-                headers: { Authorization: `Bearer ${token}` }
+            await axios.post(`${API_ENDPOINTS.TEACHER_REJECT_REQUEST}/${requestId}`, { reason }, {
+                headers: getAuthHeaders()
             });
             fetchODRequests();
         } catch (error) {
