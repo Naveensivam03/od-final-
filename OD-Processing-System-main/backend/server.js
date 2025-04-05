@@ -397,8 +397,10 @@ const storage = multer.diskStorage({
         cb(null, uploadsDir);
     },
     filename: function (req, file, cb) {
+        // Include original filename in a safe way
+        const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9]/g, '_');
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
+        cb(null, `${uniqueSuffix}-${sanitizedName}`);
     }
 });
 
@@ -426,8 +428,13 @@ const upload = multer({
     fileFilter: fileFilter
 });
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files from uploads directory with proper headers
+app.use('/uploads', (req, res, next) => {
+    // Set headers to prevent caching issues
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Content-Disposition', 'inline');
+    express.static(path.join(__dirname, 'uploads'))(req, res, next);
+});
 
 // 🔹 START SERVER
 const PORT = process.env.PORT || 5000;
@@ -503,15 +510,21 @@ app.post('/api/upload-od-files', (req, res) => {
             // Verify token
             jwt.verify(token, process.env.JWT_SECRET);
             
-            // Return file paths with full server URL
-            const serverUrl = `http://localhost:${PORT}`;
-            const filePaths = req.files.map(file => `${serverUrl}/uploads/${file.filename}`);
+            // Return file paths with full server URL and metadata
+            const serverUrl = process.env.SERVER_URL || `http://localhost:${PORT}`;
+            const fileData = req.files.map(file => ({
+                url: `${serverUrl}/uploads/${file.filename}`,
+                name: file.originalname,
+                size: file.size,
+                type: file.mimetype,
+                path: file.filename
+            }));
             
-            console.log('Uploaded files:', filePaths);
+            console.log('Uploaded files:', fileData);
             
             res.json({ 
                 success: true, 
-                files: filePaths,
+                files: fileData,
                 message: 'Files uploaded successfully'
             });
         } catch (error) {

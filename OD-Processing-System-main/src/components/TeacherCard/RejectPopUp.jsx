@@ -9,11 +9,18 @@ import {
   TextField
 } from "@mui/material";
 
-export default function PopupReject({ open, onClose, onReject }) {
+export default function PopupReject({ open, onClose, request, onReject }) {
   const [reason, setReason] = useState("");
+  const [error, setError] = useState(false);
+
+  if (!request) return null; // Ensure request is valid before rendering
 
   const handleReject = () => {
-    onReject(reason);
+    if (!reason.trim()) {
+      setError(true);
+      return;
+    }
+    onReject(request._id, reason); // Use _id instead of id
     setReason("");
     onClose();
   };
@@ -22,17 +29,23 @@ export default function PopupReject({ open, onClose, onReject }) {
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Reject Request</DialogTitle>
       <DialogContent>
-        <Typography sx={{ mb: 2 }}>Please provide a reason for rejecting this request:</Typography>
+        <Typography sx={{ mb: 2 }}>Are you sure you want to reject the request from {request.name}?</Typography>
         <TextField
           autoFocus
+          required
           margin="dense"
-          label="Reason"
+          label="Reason for rejection"
           type="text"
           fullWidth
           multiline
           rows={4}
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => {
+            setReason(e.target.value);
+            setError(false);
+          }}
+          error={error}
+          helperText={error ? "Rejection reason is required" : ""}
           sx={{ mt: 1 }}
         />
       </DialogContent>

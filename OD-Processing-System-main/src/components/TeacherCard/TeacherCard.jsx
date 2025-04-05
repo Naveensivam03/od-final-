@@ -227,7 +227,8 @@ const TeacherCard = ({ request, onApprove, onReject }) => {
             <RejectPopUp 
                 open={openRejectDialog} 
                 onClose={handleCloseRejectDialog}
-                onReject={(reason) => onReject(request._id, reason)}
+                request={request}
+                onReject={onReject}
             />
 
             <Dialog 
@@ -346,4 +347,4 @@ const TeacherCard = ({ request, onApprove, onReject }) => {
     );
 };
 
-export default TeacherCard; 
+export default TeacherCard;

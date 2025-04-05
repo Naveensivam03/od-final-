@@ -113,11 +113,15 @@ export default function Mentees() {
                 headers: getAuthHeaders()
             });
             
-            if (response.data.success) {
+            // Check if the response contains data
+            if (response.data) {
                 setSnackbarMessage('Request approved successfully');
                 setSnackbarSeverity('success');
                 setSnackbarOpen(true);
-                fetchMenteeRequests();
+                // Refresh the requests list after successful approval
+                await fetchMenteeRequests();
+            } else {
+                throw new Error('Invalid response from server');
             }
         } catch (error) {
             console.error('Error approving request:', error);
@@ -146,11 +150,15 @@ export default function Mentees() {
                 headers: getAuthHeaders()
             });
             
-            if (response.data.success) {
+            // Check if the response contains data
+            if (response.data) {
                 setSnackbarMessage('Request rejected successfully');
                 setSnackbarSeverity('success');
                 setSnackbarOpen(true);
-                fetchMenteeRequests();
+                // Refresh the requests list after successful rejection
+                await fetchMenteeRequests();
+            } else {
+                throw new Error('Invalid response from server');
             }
         } catch (error) {
             console.error('Error rejecting request:', error);

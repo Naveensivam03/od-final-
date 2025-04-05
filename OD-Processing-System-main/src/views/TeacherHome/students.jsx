@@ -112,20 +112,17 @@ export default function Students() {
             const response = await axios.post(`${API_ENDPOINTS.CLASS_ADVISOR_APPROVE}/${id}`, {}, {
                 headers: getAuthHeaders()
             });
-            
-            // Update the local state to reflect the approval
-            setRequests(requests.map(request => 
-                request._id === id 
-                    ? { ...request, classAdvisorApproval: { status: 'Approved' } } 
-                    : request
-            ));
-            
-            setSnackbarMessage('Request approved successfully');
-            setSnackbarSeverity('success');
-            setSnackbarOpen(true);
-            
-            // Refresh the requests list
-            fetchClassAdvisorRequests();
+
+            // Check if the response contains data
+            if (response.data) {
+                setSnackbarMessage('Request approved successfully');
+                setSnackbarSeverity('success');
+                setSnackbarOpen(true);
+                // Refresh the requests list after successful approval
+                await fetchClassAdvisorRequests();
+            } else {
+                throw new Error('Invalid response from server');
+            }
         } catch (error) {
             console.error('Error approving request:', error);
             setSnackbarMessage(error.response?.data?.message || 'Failed to approve request');
@@ -149,30 +146,26 @@ export default function Students() {
     // Function to reject a request
     const handleReject = async (id, reason) => {
         try {
-            const response = await axios.post(`${API_ENDPOINTS.CLASS_ADVISOR_REJECT}/${id}`, 
-                { reason }, 
-                {
-                    headers: getAuthHeaders()
-                }
+            const response = await axios.post(`${API_ENDPOINTS.CLASS_ADVISOR_REJECT}/${id}`,
+                { reason },
+                { headers: getAuthHeaders() }
             );
-            
-            // Update the local state to reflect the rejection
-            setRequests(requests.map(request => 
-                request._id === id 
-                    ? { ...request, classAdvisorApproval: { status: 'Rejected', remarks: reason } } 
-                    : request
-            ));
-            
-            setSnackbarMessage('Request rejected successfully');
-            setSnackbarSeverity('success');
-            setSnackbarOpen(true);
-            
-            // Close the reject popup
-            setRejectPopupOpen(false);
-            setSelectedRequest(null);
-            
-            // Refresh the requests list
-            fetchClassAdvisorRequests();
+
+            // Check if the response contains data
+            if (response.data) {
+                setSnackbarMessage('Request rejected successfully');
+                setSnackbarSeverity('success');
+                setSnackbarOpen(true);
+                
+                // Close the reject popup
+                setRejectPopupOpen(false);
+                setSelectedRequest(null);
+                
+                // Refresh the requests list after successful rejection
+                await fetchClassAdvisorRequests();
+            } else {
+                throw new Error('Invalid response from server');
+            }
         } catch (error) {
             console.error('Error rejecting request:', error);
             setSnackbarMessage(error.response?.data?.message || 'Failed to reject request');
