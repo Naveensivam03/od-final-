@@ -740,11 +740,15 @@ app.get('/api/od-applications', async (req, res) => {
         // Build query
         const query = { 
             studentId,
-            submissionDate: { $gte: startDate }
+            submissionDate: { $gte: startDate },
+            $or: [
+                { mentorApproval: { status: 'Pending' } },
+                { classAdvisorApproval: { status: 'Pending' } }
+            ]
         };
 
-        // Add status filter if not 'all'
-        if (status !== 'all') {
+        // Add additional status filter if specified
+        if (status !== 'all' && status !== 'Pending') {
             query.status = status;
         }
         
