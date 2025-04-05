@@ -9,52 +9,10 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@mui/material';
 import * as ROUTES from '../../constants/routes';
 
-// Sample teacher profile data
-const teacherProfile = {
-    name: 'Dr. Jane Doe',
-    email: 'jane.doe@example.com',
-    department: 'Mathematics',
-    phone: '123-456-7890'
-};
+import axios from 'axios';
+import { API_ENDPOINTS, getAuthHeaders } from '../../config';
 
-// Import the initial requests data
-const menteesinitialRequests = [
-    {
-        id: 1,
-        name: 'John Doe',
-        odSubmissionStatus: 'Pending',
-        // ... other fields
-    },
-    {
-        id: 2,
-        name: 'Jane Smith',
-        odSubmissionStatus: 'Pending',
-        // ... other fields
-    }
-    // ... other requests
-];
-
-const studentinitialRequests = [
-    {
-        id: 1,
-        name: 'John Doe',
-        odSubmissionStatus: 'Pending',
-        // ... other fields
-    },
-    {
-        id: 2,
-        name: 'Jane Smith',
-        odSubmissionStatus: 'Pending',
-        // ... other fields
-    },
-    {
-        id: 3,
-        name: 'Jane Smith',
-        odSubmissionStatus: 'Pending',
-        // ... other fields
-    }
-    // ... other requests
-];
+// Updated profile section styling
 // Updated profile section styling
 const ProfileLabel = ({ children }) => (
     <Typography 
@@ -83,14 +41,59 @@ const ProfileValue = ({ children }) => (
 );
 
 export default function TeacherHome() {
-    // Get the count of pending requests
-    const menteespendingCount = menteesinitialRequests.filter(
-        request => request.odSubmissionStatus === 'Pending'
-    ).length;
+    const [teacherProfile, setTeacherProfile] = useState({
+        name: 'Loading...',
+        email: 'Loading...',
+        department: 'Loading...',
+        phone: 'Loading...'
+    });
+    const [menteespendingCount, setMenteesPendingCount] = useState(0);
+    const [studentpendingCount, setStudentPendingCount] = useState(0);
+    const [loading, setLoading] = useState(true);
 
-    const studentpendingCount = studentinitialRequests.filter(
-        request => request.odSubmissionStatus === 'Pending'
-    ).length;
+    useEffect(() => {
+        // Load teacher profile from localStorage
+        try {
+            const userData = JSON.parse(localStorage.getItem('user'));
+            if (userData) {
+                setTeacherProfile({
+                    name: userData.name || 'Not available',
+                    email: userData.email || 'Not available',
+                    department: userData.department || 'Not available',
+                    phone: userData.phone || 'Not available'
+                });
+            }
+        } catch (error) {
+            console.error('Error loading teacher profile:', error);
+        }
+
+        // Fetch pending requests counts
+        const fetchPendingCounts = async () => {
+            try {
+                const [menteesResponse, studentsResponse] = await Promise.all([
+                    axios.get(API_ENDPOINTS.TEACHER_MENTEE_REQUESTS, { headers: getAuthHeaders() }),
+                    axios.get(API_ENDPOINTS.TEACHER_STUDENT_REQUESTS, { headers: getAuthHeaders() })
+                ]);
+
+                const menteesCount = menteesResponse.data.requests?.filter(
+                    request => request.status === 'Pending'
+                ).length || 0;
+
+                const studentsCount = studentsResponse.data.requests?.filter(
+                    request => request.status === 'Pending'
+                ).length || 0;
+
+                setMenteesPendingCount(menteesCount);
+                setStudentPendingCount(studentsCount);
+            } catch (error) {
+                console.error('Error fetching pending counts:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPendingCounts();
+    }, []);
 
     const cards = [
         {

@@ -100,17 +100,35 @@ export default function Students() {
 
 
     // Function to approve a request
-    const handleApprove = (id) => {
-        setRequests(requests.map(request => 
-            request.id === id ? { ...request, odSubmissionStatus: 'Approved' } : request
-        ));
+    const handleApprove = async (id) => {
+        try {
+            await axios.post(`${API_ENDPOINTS.CLASS_ADVISOR_APPROVE}/${id}`, {}, {
+                headers: getAuthHeaders()
+            });
+            await fetchRequests(); // Refresh the list after approval
+            setSnackbarMessage('Request approved successfully');
+            setSnackbarOpen(true);
+        } catch (error) {
+            console.error('Error approving request:', error);
+            setSnackbarMessage('Failed to approve request');
+            setSnackbarOpen(true);
+        }
     };
 
     // Function to reject a request
-    const handleReject = (id,reason) => {
-        setRequests(requests.map(request => 
-            request.id === id ? { ...request, odSubmissionStatus: 'Rejected', rejectionReason: reason } : request
-        ));
+    const handleReject = async (id, reason) => {
+        try {
+            await axios.post(`${API_ENDPOINTS.CLASS_ADVISOR_REJECT}/${id}`, { reason }, {
+                headers: getAuthHeaders()
+            });
+            await fetchRequests(); // Refresh the list after rejection
+            setSnackbarMessage('Request rejected successfully');
+            setSnackbarOpen(true);
+        } catch (error) {
+            console.error('Error rejecting request:', error);
+            setSnackbarMessage('Failed to reject request');
+            setSnackbarOpen(true);
+        }
     };
 
     const handleRejectClick = (request) => {
@@ -139,13 +157,40 @@ export default function Students() {
     };
 
     // Separate requests into pending and completed
-    const pendingRequests = requests.filter(request => request.odSubmissionStatus === 'Pending');
-    const completedRequests = requests.filter(request => request.odSubmissionStatus !== 'Pending');
+    const pendingRequests = requests.filter(request => 
+        request.classAdvisorApproval?.status === 'Pending' || !request.classAdvisorApproval
+    );
+
+    const completedRequests = requests.filter(request => 
+        request.classAdvisorApproval && 
+        ['Approved', 'Rejected'].includes(request.classAdvisorApproval.status)
+    );
 
     // Show notification when the component mounts
+    // Fetch requests when component mounts
+    const fetchRequests = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get(API_ENDPOINTS.TEACHER_CLASS_ADVISOR_REQUESTS, {
+                headers: getAuthHeaders()
+            });
+            setRequests(response.data.requests || []);
+            if (response.data.requests?.length > 0) {
+                setSnackbarMessage('New submissions are available!');
+                setSnackbarOpen(true);
+            }
+        } catch (error) {
+            console.error('Error fetching requests:', error);
+            setError('Failed to fetch requests');
+            setSnackbarMessage('Failed to load requests');
+            setSnackbarOpen(true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        setSnackbarMessage('New submissions are available!');
-        setSnackbarOpen(true);
+        fetchRequests();
     }, []);
 
     return (
@@ -279,7 +324,7 @@ export default function Students() {
 
                 {/* Completed Requests Section */}
                 <Typography variant="h5" sx={{ marginTop: 4, marginBottom: 2 }}>
-                    Completed Requests
+                    bib Requests
                 </Typography>
                 <Grid container spacing={3}>
                     {completedRequests.map((request) => (

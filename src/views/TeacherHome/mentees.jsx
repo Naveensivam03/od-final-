@@ -97,17 +97,35 @@ export default function Mentees() {
 
 
     // Function to approve a request
-    const handleApprove = (id) => {
-        setRequests(requests.map(request => 
-            request.id === id ? { ...request, odSubmissionStatus: 'Approved' } : request
-        ));
+    const handleApprove = async (id) => {
+        try {
+            await axios.post(`${API_ENDPOINTS.TEACHER_APPROVE_REQUEST}/${id}`, {}, {
+                headers: getAuthHeaders()
+            });
+            await fetchRequests(); // Refresh the list after approval
+            setSnackbarMessage('Request approved successfully');
+            setSnackbarOpen(true);
+        } catch (error) {
+            console.error('Error approving request:', error);
+            setSnackbarMessage('Failed to approve request');
+            setSnackbarOpen(true);
+        }
     };
 
     // Function to reject a request
-    const handleReject = (id,reason) => {
-        setRequests(requests.map(request => 
-            request.id === id ? { ...request, odSubmissionStatus: 'Rejected', rejectionReason: reason } : request
-        ));
+    const handleReject = async (id, reason) => {
+        try {
+            await axios.post(`${API_ENDPOINTS.TEACHER_REJECT_REQUEST}/${id}`, { reason }, {
+                headers: getAuthHeaders()
+            });
+            await fetchRequests(); // Refresh the list after rejection
+            setSnackbarMessage('Request rejected successfully');
+            setSnackbarOpen(true);
+        } catch (error) {
+            console.error('Error rejecting request:', error);
+            setSnackbarMessage('Failed to reject request');
+            setSnackbarOpen(true);
+        }
     };
 
     const handleRejectClick = (request) => {
@@ -136,13 +154,39 @@ export default function Mentees() {
     };
 
     // Separate requests into pending and completed
-    const pendingRequests = requests.filter(request => request.odSubmissionStatus === 'Pending');
-    const completedRequests = requests.filter(request => request.odSubmissionStatus !== 'Pending');
+    const pendingRequests = requests.filter(request => 
+        request.mentorApproval?.status === 'Pending' || !request.mentorApproval
+    );
 
-    // Show notification when the component mounts
+    const completedRequests = requests.filter(request => 
+        request.mentorApproval && 
+        ['Approved', 'Rejected'].includes(request.mentorApproval.status)
+    );
+
+    // Fetch requests when component mounts
+    const fetchRequests = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get(API_ENDPOINTS.TEACHER_MENTEE_REQUESTS, {
+                headers: getAuthHeaders()
+            });
+            setRequests(response.data.requests || []);
+            if (response.data.requests?.length > 0) {
+                setSnackbarMessage('New submissions are available!');
+                setSnackbarOpen(true);
+            }
+        } catch (error) {
+            console.error('Error fetching requests:', error);
+            setError('Failed to fetch requests');
+            setSnackbarMessage('Failed to load requests');
+            setSnackbarOpen(true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        setSnackbarMessage('New submissions are available!');
-        setSnackbarOpen(true);
+        fetchRequests();
     }, []);
 
     return (
