@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 backend/node_modules
+
+# Environment files
+OD-Processing-System-main/.env
+OD-Processing-System-main/.env.production
