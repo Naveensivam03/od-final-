@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "cd OD-Processing-System-main && npm run dev",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
+    "dev": "cd OD-Processing-System-main && vite",
+    "build": "cd OD-Processing-System-main && vite build",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "cd OD-Processing-System-main && vite preview",
     "frontend": "cd OD-Processing-System-main && npm run dev"
   },
   "dependencies": {
