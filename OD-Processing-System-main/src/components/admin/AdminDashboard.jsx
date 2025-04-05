@@ -104,16 +104,115 @@ const AdminDashboard = () => {
 
     const fetchStatistics = async () => {
         try {
-            const response = await axios.get(
-                `${API_ENDPOINTS.ADMIN_OD_STATISTICS}?timePeriod=${timePeriod}&teacherId=${selectedTeacher}&studentId=${selectedStudent}`,
-                {
-                    headers: getAuthHeaders()
+            setError('');
+            
+            // Use a try-catch block specifically for the API call
+            let response;
+            try {
+                response = await axios.get(
+                    `${API_ENDPOINTS.ADMIN_OD_STATISTICS}?timePeriod=${timePeriod}&teacherId=${selectedTeacher}&studentId=${selectedStudent}`,
+                    {
+                        headers: getAuthHeaders()
+                    }
+                );
+            } catch (apiError) {
+                console.error('API call error:', apiError);
+                throw new Error('Failed to fetch statistics from server');
+            }
+            
+            // Create a completely new statistics object with default values
+            const defaultStats = {
+                overall: { totalRequests: 0, approved: 0, rejected: 0, pending: 0 },
+                teacherStats: []
+            };
+            
+            // If no data or invalid data, use defaults
+            if (!response || !response.data) {
+                setStatistics(defaultStats);
+                return;
+            }
+            
+            // Safely extract overall statistics with defaults
+            const overall = {
+                totalRequests: 0,
+                approved: 0,
+                rejected: 0,
+                pending: 0
+            };
+            
+            // Try to get overall stats, but use defaults if any issues
+            try {
+                if (response.data.overall) {
+                    overall.totalRequests = parseInt(response.data.overall.totalRequests) || 0;
+                    overall.approved = parseInt(response.data.overall.approved) || 0;
+                    overall.rejected = parseInt(response.data.overall.rejected) || 0;
+                    overall.pending = parseInt(response.data.overall.pending) || 0;
                 }
-            );
-            setStatistics(response.data);
+            } catch (e) {
+                console.error('Error processing overall stats:', e);
+                // Keep default values
+            }
+            
+            // Safely process teacher stats
+            let teacherStats = [];
+            try {
+                if (Array.isArray(response.data.teacherStats)) {
+                    teacherStats = response.data.teacherStats.map(teacher => {
+                        // Create a safe teacher object with defaults
+                        const safeTeacher = {
+                            teacherId: '',
+                            teacherName: '',
+                            teacherEmail: '',
+                            stats: {
+                                totalHandled: 0,
+                                approved: 0,
+                                rejected: 0,
+                                pending: 0
+                            }
+                        };
+                        
+                        // Try to safely extract values
+                        if (teacher) {
+                            // Convert ObjectId to string if it's an object
+                            safeTeacher.teacherId = teacher.teacherId ? 
+                                (typeof teacher.teacherId === 'object' ? 
+                                    teacher.teacherId.toString() : 
+                                    String(teacher.teacherId)) : '';
+                            
+                            safeTeacher.teacherName = teacher.teacherName || '';
+                            safeTeacher.teacherEmail = teacher.teacherEmail || '';
+                            
+                            if (teacher.stats) {
+                                safeTeacher.stats.totalHandled = parseInt(teacher.stats.totalHandled) || 0;
+                                safeTeacher.stats.approved = parseInt(teacher.stats.approved) || 0;
+                                safeTeacher.stats.rejected = parseInt(teacher.stats.rejected) || 0;
+                                safeTeacher.stats.pending = parseInt(teacher.stats.pending) || 0;
+                            }
+                        }
+                        
+                        return safeTeacher;
+                    });
+                }
+            } catch (e) {
+                console.error('Error processing teacher stats:', e);
+                // Keep empty array
+            }
+            
+            // Set the safely processed statistics
+            setStatistics({
+                overall,
+                teacherStats
+            });
+            
         } catch (error) {
-            setError('Failed to fetch statistics');
             console.error('Error fetching statistics:', error);
+            setError(error.message || 'Failed to fetch statistics');
+            
+            // Set default values when there's an error
+            setStatistics({
+                overall: { totalRequests: 0, approved: 0, rejected: 0, pending: 0 },
+                teacherStats: []
+            });
         }
     };
 
@@ -795,4 +894,4 @@ const AdminDashboard = () => {
     );
 };
 
-export default AdminDashboard; 
+export default AdminDashboard;

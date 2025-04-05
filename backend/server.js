@@ -1829,7 +1829,7 @@ app.get('/api/admin/od-statistics', isAdmin, async (req, res) => {
 
         // Add student filter if specified
         if (studentId !== 'all') {
-            matchQuery.studentId = mongoose.Types.ObjectId(studentId);
+            matchQuery.studentId = new mongoose.Types.ObjectId(studentId);
         }
 
         // Get all teachers for the query

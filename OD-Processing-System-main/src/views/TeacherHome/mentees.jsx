@@ -86,9 +86,13 @@ export default function Mentees() {
             setRequests(response.data.requests || []);
             setLoading(false);
             
-            // Show notification if there are requests
-            if (response.data.requests && response.data.requests.length > 0) {
-                setSnackbarMessage(`${response.data.requests.length} OD requests pending your approval`);
+            // Filter pending requests and show notification
+            const pendingRequests = (response.data.requests || []).filter(request => 
+                !request.mentorApproval || request.mentorApproval.status === 'Pending'
+            );
+            
+            if (pendingRequests.length > 0) {
+                setSnackbarMessage(`${pendingRequests.length} OD requests pending your approval`);
                 setSnackbarSeverity('info');
                 setSnackbarOpen(true);
             } else {
