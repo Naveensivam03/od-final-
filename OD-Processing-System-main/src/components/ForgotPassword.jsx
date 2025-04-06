@@ -47,9 +47,12 @@ const ForgotPassword = () => {
             
             if (response.data.success) {
                 setStep('reset');
-                setMessage('OTP verified successfully');
+                setMessage('OTP verified successfully. Please set your new password.');
+            } else {
+                setError(response.data.message || 'Failed to verify OTP');
             }
         } catch (error) {
+            console.error('OTP verification error:', error);
             setError(error.response?.data?.message || 'Failed to verify OTP');
         } finally {
             setIsLoading(false);
