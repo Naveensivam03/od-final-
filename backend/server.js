@@ -427,30 +427,28 @@ app.post('/api/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
         
-        const otpData = otpStore.get(email);
-        if (!otpData) {
-            return res.status(400).json({ message: 'OTP expired or not found' });
+        // Find user and check OTP
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
         }
 
-        // Check attempts
-        if (otpData.attempts >= 3) {
-            otpStore.delete(email);
-            return res.status(400).json({ message: 'Too many attempts. Please request a new OTP' });
+        // Check if OTP exists and hasn't expired
+        if (!user.resetPasswordToken || !user.resetPasswordExpires) {
+            return res.status(400).json({ message: 'No OTP found. Please request a new one.' });
         }
 
-        // Check expiry (10 minutes)
-        if (Date.now() - otpData.timestamp > 600000) {
-            otpStore.delete(email);
-            return res.status(400).json({ message: 'OTP expired' });
+        // Check if OTP has expired (10 minutes)
+        if (Date.now() > user.resetPasswordExpires) {
+            return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
         }
 
         // Verify OTP
-        if (otpData.otp !== otp) {
-            otpData.attempts += 1;
+        if (user.resetPasswordToken !== otp) {
             return res.status(400).json({ message: 'Invalid OTP' });
         }
 
-        res.json({ message: 'OTP verified successfully' });
+        res.json({ success: true, message: 'OTP verified successfully' });
     } catch (error) {
         console.error('Error verifying OTP:', error);
         res.status(500).json({ message: 'Error verifying OTP' });
