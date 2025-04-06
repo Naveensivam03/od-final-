@@ -144,7 +144,7 @@ async function sendRejectionNotification(student, odRequest, rejectedBy, reason)
 
 // Generate OTP
 function generateOTP() {
-    return crypto.randomInt(100000, 999999).toString();
+    return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 // User Schema
@@ -320,70 +320,6 @@ app.post('/api/login', async (req, res) => {
 });
 
 // 📧 Setup Nodemailer for Sending Emails
-// 🔹 FORGOT PASSWORD - Generate Reset Token
-// app.post('/api/forgot-password', async (req, res) => {
-//     try {
-//         const { email } = req.body;
-//         const user = await User.findOne({ email });
-
-//         if (!user) {
-//             return res.status(404).json({ message: 'User not found' });
-//         }
-
-//         const resetToken = jwt.sign(
-//             { userId: user._id },
-//             process.env.JWT_SECRET,
-//             { expiresIn: '1h' }
-//         );
-//         user.resetPasswordToken = resetToken;
-//         user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
-
-//         await user.save();
-
-//         // Here you would typically send an email with the reset token
-//         // For now, we'll just return the token
-//         res.json({ message: 'Password reset token sent', token: resetToken });
-//     } catch (error) {
-//         console.error('Forgot password error:', error);
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// });
-
-// // 🔹 RESET PASSWORD - Validate Token & Set New Password
-// app.post('/api/reset-password', async (req, res) => {
-//     try {
-//         const { token, newPassword } = req.body;
-
-//         const user = await User.findOne({
-//             resetPasswordToken: token,
-//             resetPasswordExpires: { $gt: Date.now() }
-//         });
-
-//         if (!user) {
-//             return res.status(400).json({ message: 'Invalid or expired reset token' });
-//         }
-
-//         const salt = await bcrypt.genSalt(10);
-//         user.password = await bcrypt.hash(newPassword, salt);
-//         user.resetPasswordToken = undefined;
-//         user.resetPasswordExpires = undefined;
-
-//         await user.save();
-
-//         res.json({ message: 'Password has been reset' });
-//     } catch (error) {
-//         console.error('Reset password error:', error);
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// });
-
-// // 🔹 ERROR HANDLING MIDDLEWARE
-// app.use((err, req, res, next) => {
-//     console.error('❌ Error:', err.stack);
-//     res.status(500).json({ message: 'Something went wrong!' });
-// });
-// Replace the existing forgot password and reset password endpoints with these:
-
 // 🔹 FORGOT PASSWORD - Generate and Send OTP
 app.post('/api/forgot-password', async (req, res) => {
     try {
@@ -391,7 +327,10 @@ app.post('/api/forgot-password', async (req, res) => {
         const user = await User.findOne({ email });
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ 
+                success: false,
+                message: 'User not found' 
+            });
         }
 
         // Generate a 6-digit OTP
@@ -422,7 +361,10 @@ app.post('/api/forgot-password', async (req, res) => {
         });
     } catch (error) {
         console.error('Forgot password error:', error);
-        res.status(500).json({ message: 'Error sending OTP' });
+        res.status(500).json({ 
+            success: false,
+            message: 'Error sending OTP' 
+        });
     }
 });
 
@@ -434,17 +376,26 @@ app.post('/api/verify-otp', async (req, res) => {
         // Find user by email
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ 
+                success: false,
+                message: 'User not found' 
+            });
         }
         
         // Check if OTP exists and matches
         if (user.resetPasswordToken !== otp) {
-            return res.status(400).json({ message: 'Invalid OTP' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'Invalid OTP' 
+            });
         }
         
         // Check if OTP has expired (10 minutes)
         if (Date.now() > user.resetPasswordExpires) {
-            return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'OTP has expired. Please request a new one.' 
+            });
         }
         
         // Generate reset token
@@ -461,10 +412,12 @@ app.post('/api/verify-otp', async (req, res) => {
         });
     } catch (error) {
         console.error('Error verifying OTP:', error);
-        res.status(500).json({ message: 'Error verifying OTP' });
+        res.status(500).json({ 
+            success: false,
+            message: 'Error verifying OTP' 
+        });
     }
 });
-
 
 // 🔹 RESET PASSWORD - With Verified OTP
 app.post('/api/reset-password', async (req, res) => {
@@ -476,13 +429,19 @@ app.post('/api/reset-password', async (req, res) => {
         try {
             decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
         } catch (err) {
-            return res.status(400).json({ message: 'Invalid or expired reset token' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'Invalid or expired reset token' 
+            });
         }
 
         // Find user and update password
         const user = await User.findById(decoded.userId);
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ 
+                success: false,
+                message: 'User not found' 
+            });
         }
 
         // Update password and clear reset token fields
@@ -497,10 +456,12 @@ app.post('/api/reset-password', async (req, res) => {
         });
     } catch (error) {
         console.error('Reset password error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ 
+            success: false,
+            message: 'Server error' 
+        });
     }
 });
-
 
 // Add these imports at the top of your file
 const multer = require('multer');
