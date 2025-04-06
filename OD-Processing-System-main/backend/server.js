@@ -395,30 +395,34 @@ app.post('/api/forgot-password', async (req, res) => {
         }
 
         // Generate a 6-digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = generateOTP();
         const otpExpiry = Date.now() + 600000; // 10 minutes
 
         // Save OTP and expiry to user document
-        await User.findOneAndUpdate(
-            { _id: user._id },
-            { 
-                resetPasswordToken: otp,
-                resetPasswordExpires: otpExpiry
-            },
-            { new: true, runValidators: false }
-        );
+        user.resetPasswordToken = otp;
+        user.resetPasswordExpires = otpExpiry;
+        await user.save();
 
         // Send OTP via email
         await transporter.sendMail({
+            from: process.env.EMAIL,
             to: email,
             subject: 'Password Reset OTP',
-            text: `Your OTP for password reset is: ${otp}\nThis OTP will expire in 10 minutes.`
+            html: `
+                <h2>Password Reset Request</h2>
+                <p>Your OTP for password reset is: <strong>${otp}</strong></p>
+                <p>This OTP will expire in 10 minutes.</p>
+                <p>If you didn't request this, please ignore this email.</p>
+            `
         });
 
-        res.json({ message: 'OTP sent to your email' });
+        res.json({ 
+            success: true,
+            message: 'OTP sent successfully' 
+        });
     } catch (error) {
         console.error('Forgot password error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Error sending OTP' });
     }
 });
 
@@ -427,46 +431,34 @@ app.post('/api/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
         
-        // Get OTP data from store
-        const otpData = otpStore.get(email);
-        
-        // Check if OTP exists
-        if (!otpData) {
-            return res.status(400).json({ message: 'No OTP found. Please request a new one.' });
+        // Find user by email
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
         }
         
-        // Check if OTP has expired (10 minutes)
-        const TEN_MINUTES = 10 * 60 * 1000; // 10 minutes in milliseconds
-        if (Date.now() - otpData.timestamp > TEN_MINUTES) {
-            otpStore.delete(email); // Clean up expired OTP
-            return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
-        }
-        
-        // Verify OTP
-        if (otpData.otp !== otp) {
-            // Increment failed attempts
-            otpData.attempts = (otpData.attempts || 0) + 1;
-            
-            // If more than 3 failed attempts, invalidate OTP
-            if (otpData.attempts >= 3) {
-                otpStore.delete(email);
-                return res.status(400).json({ message: 'Too many failed attempts. Please request a new OTP.' });
-            }
-            
+        // Check if OTP exists and matches
+        if (user.resetPasswordToken !== otp) {
             return res.status(400).json({ message: 'Invalid OTP' });
         }
         
-        // OTP is valid - generate reset token
+        // Check if OTP has expired (10 minutes)
+        if (Date.now() > user.resetPasswordExpires) {
+            return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+        }
+        
+        // Generate reset token
         const resetToken = jwt.sign(
-            { email },
+            { userId: user._id },
             process.env.JWT_SECRET,
             { expiresIn: '10m' }
         );
         
-        // Clear OTP after successful verification
-        otpStore.delete(email);
-        
-        res.json({ success: true, resetToken });
+        res.json({ 
+            success: true, 
+            resetToken,
+            message: 'OTP verified successfully'
+        });
     } catch (error) {
         console.error('Error verifying OTP:', error);
         res.status(500).json({ message: 'Error verifying OTP' });
@@ -487,27 +479,22 @@ app.post('/api/reset-password', async (req, res) => {
             return res.status(400).json({ message: 'Invalid or expired reset token' });
         }
 
-        // Update user with new password and clear reset token fields
-        const salt = await bcrypt.genSalt(10);
-        //const hashedPassword = await bcrypt.hash(newPassword, salt);
-        
-        const updatedUser = await User.findOneAndUpdate(
-            { _id: decoded.userId },
-            {
-                password: newPassword,
-                $unset: {
-                    resetPasswordToken: 1,
-                    resetPasswordExpires: 1
-                }
-            },
-            { new: true, runValidators: false }
-        );
-
-        if (!updatedUser) {
+        // Find user and update password
+        const user = await User.findById(decoded.userId);
+        if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        res.json({ message: 'Password has been reset successfully' });
+        // Update password and clear reset token fields
+        user.password = newPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        res.json({ 
+            success: true,
+            message: 'Password has been reset successfully' 
+        });
     } catch (error) {
         console.error('Reset password error:', error);
         res.status(500).json({ message: 'Server error' });
