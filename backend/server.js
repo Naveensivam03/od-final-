@@ -27,7 +27,7 @@ const transporter = nodemailer.createTransport({
 
 // Generate OTP
 function generateOTP() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return crypto.randomInt(100000, 999999).toString();
 }
 
 // User Schema
@@ -266,7 +266,7 @@ app.post('/api/login', async (req, res) => {
 // Replace the existing forgot password and reset password endpoints with these:
 
 // 🔹 FORGOT PASSWORD - Generate and Send OTP
-app.post('/api/forgot-password', async (req, res) => {
+('/api/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
         const user = await User.findOne({ email });
@@ -276,29 +276,26 @@ app.post('/api/forgot-password', async (req, res) => {
         }
 
         // Generate a 6-digit OTP
-        const otp = generateOTP();
-        
-        // Store OTP with timestamp (expires in 10 minutes)
-        otpStore.set(email, {
-            otp,
-            timestamp: Date.now(),
-            attempts: 0
-        });
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiry = Date.now() + 600000; // 10 minutes
+
+        // Save OTP and expiry to user document
+        await User.findOneAndUpdate(
+            { _id: user._id },
+            { 
+                resetPasswordToken: otp,
+                resetPasswordExpires: otpExpiry
+            },
+            { new: true, runValidators: false }
+        );
 
         // Send OTP via email
-        const mailOptions = {
-            from: process.env.EMAIL,
+        await transporter.sendMail({
             to: email,
             subject: 'Password Reset OTP',
-            html: `
-                <h2>Password Reset Request</h2>
-                <p>Your OTP for password reset is: <strong>${otp}</strong></p>
-                <p>This OTP will expire in 10 minutes.</p>
-                <p>If you didn't request this, please ignore this email.</p>
-            `
-        };
+            text: 'Your OTP for password reset is: ${otp}\nThis OTP will expire in 10 minutes.'
+        });
 
-        await transporter.sendMail(mailOptions);
         res.json({ message: 'OTP sent to your email' });
     } catch (error) {
         console.error('Forgot password error:', error);
@@ -306,8 +303,9 @@ app.post('/api/forgot-password', async (req, res) => {
     }
 });
 
+
 // 🔹 VERIFY OTP
-app.post('/api/verify-otp', async (req, res) => {
+('/api/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
         
@@ -375,8 +373,8 @@ app.post('/api/reset-password', async (req, res) => {
         res.json({ message: 'Password reset successful' });
     } catch (error) {
         console.error('Error resetting password:', error);
-        res.status(500).json({ message: 'Error resetting password' });
-    }
+        res.status(500).json({ message: 'Error resetting password' });
+    }
 });
 
 
