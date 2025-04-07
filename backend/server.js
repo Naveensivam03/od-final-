@@ -475,7 +475,7 @@ app.post('/api/verify-otp', async (req, res) => {
 
 
 // 🔹 RESET PASSWORD - With Verified OTP
-app.post('/api/reset-password', async (req, res) => {
+ app.post('/api/reset-password', async (req, res) => {
     try {
         const { resetToken, newPassword } = req.body;
 
