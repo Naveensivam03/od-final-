@@ -427,28 +427,46 @@ app.post('/api/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
         
-        // Find user and check OTP
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Check if OTP exists and hasn't expired
-        if (!user.resetPasswordToken || !user.resetPasswordExpires) {
+        // Get OTP data from store
+        const otpData = otpStore.get(email);
+        
+        // Check if OTP exists
+        if (!otpData) {
             return res.status(400).json({ message: 'No OTP found. Please request a new one.' });
         }
-
+        
         // Check if OTP has expired (10 minutes)
-        if (Date.now() > user.resetPasswordExpires) {
+        const TEN_MINUTES = 10 * 60 * 1000; // 10 minutes in milliseconds
+        if (Date.now() - otpData.timestamp > TEN_MINUTES) {
+            otpStore.delete(email); // Clean up expired OTP
             return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
         }
-
+        
         // Verify OTP
-        if (user.resetPasswordToken !== otp) {
+        if (otpData.otp !== otp) {
+            // Increment failed attempts
+            otpData.attempts = (otpData.attempts || 0) + 1;
+            
+            // If more than 3 failed attempts, invalidate OTP
+            if (otpData.attempts >= 3) {
+                otpStore.delete(email);
+                return res.status(400).json({ message: 'Too many failed attempts. Please request a new OTP.' });
+            }
+            
             return res.status(400).json({ message: 'Invalid OTP' });
         }
-
-        res.json({ success: true, message: 'OTP verified successfully' });
+        
+        // OTP is valid - generate reset token
+        const resetToken = jwt.sign(
+            { email },
+            process.env.JWT_SECRET,
+            { expiresIn: '10m' }
+        );
+        
+        // Clear OTP after successful verification
+        otpStore.delete(email);
+        
+        res.json({ success: true, resetToken });
     } catch (error) {
         console.error('Error verifying OTP:', error);
         res.status(500).json({ message: 'Error verifying OTP' });
@@ -495,7 +513,6 @@ app.post('/api/reset-password', async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
-
 
 // Add these imports at the top of your file
 const multer = require('multer');
