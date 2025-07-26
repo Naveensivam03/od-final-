@@ -164,7 +164,6 @@ npm run preview
 ### Default Access URLs
 - **Frontend**: http://localhost:5173 (Vite dev server)
 - **Backend API**: http://localhost:5000
-- **Production Frontend**: https://od-final.onrender.com
 
 ## 🔐 Authentication & User Roles
 
